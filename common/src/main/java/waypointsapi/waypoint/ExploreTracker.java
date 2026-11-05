@@ -27,7 +27,7 @@ public final class ExploreTracker {
                 WaypointStore.setExplored(waypoint, true);
                 Waypoint explored = waypoint.withExplored(true);
                 WaypointGuide.onExplored(mc, explored);
-                mc.gui.toastManager().addToast(new ExploredToast(explored));
+                mc.getToastManager().addToast(new ExploredToast(explored));
             }
         }
     }

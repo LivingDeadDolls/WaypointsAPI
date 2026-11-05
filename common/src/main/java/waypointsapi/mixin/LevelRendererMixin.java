@@ -20,7 +20,7 @@ abstract class LevelRendererMixin {
     @Inject(method = "finalizeGizmoCollection", at = @At("HEAD"))
     private void waypointsapi$frameGizmos(CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
-        try (Gizmos.TemporaryCollection ignored = ((LevelRenderer) (Object) this).collectPerFrameRenderThreadGizmos()) {
+        try (Gizmos.TemporaryCollection ignored = ((LevelRenderer) (Object) this).collectPerFrameGizmos()) {
             WaypointRenderer.frame(mc, CameraPosition.of(mc), CameraPosition.forward(mc));
         }
     }

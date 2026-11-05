@@ -14,7 +14,7 @@ import journeymap.api.v2.client.display.MarkerOverlay;
 import journeymap.api.v2.client.model.MapImage;
 import journeymap.api.v2.client.model.TextProperties;
 import journeymap.api.v2.client.util.UIState;
-import journeymap.api.v2.common.Context;
+import journeymap.api.v2.client.display.Context;
 import journeymap.api.v2.common.waypoint.Waypoint;
 import journeymap.api.v2.common.waypoint.WaypointFactory;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -152,7 +152,7 @@ public final class JourneyMapMarkers {
             public boolean onMouseClick(UIState state, Point2D.Double mousePosition, BlockPos blockPosition, int button, boolean doubleClick) {
                 if (button != 0) return false;
                 Minecraft mc = Minecraft.getInstance();
-                Screens.open(WaypointListScreen.at(mc.gui.screen(), marker.waypoint()));
+                Screens.open(WaypointListScreen.at(mc.screen, marker.waypoint()));
                 return true;
             }
         });
