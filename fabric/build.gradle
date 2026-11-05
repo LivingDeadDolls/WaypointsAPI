@@ -1,0 +1,130 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.fabricmc.fabric-loom'
+    id 'maven-publish'
+}
+repositories {
+    // Seed Engine API, published to the local Maven repository (./gradlew publishToMavenLocal in Seed Engine API).
+    exclusiveContent {
+        forRepository {
+            mavenLocal()
+        }
+        filter { includeModule('io.github.livingdeaddolls', 'seedengine-fabric') }
+    }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Modrinth'
+                url = uri('https://api.modrinth.com/maven')
+            }
+        }
+        filter { includeGroup('maven.modrinth') }
+    }
+}
+
+// JourneyMap ships its API inside its jar (and publishes no API build for every version): compile against the one inside.
+def journeyMapJar = configurations.detachedConfiguration(dependencies.create("maven.modrinth:journeymap:${journeymap_version}") { transitive = false })
+def extractJourneyMapApi = tasks.register('extractJourneyMapApi', Sync) {
+    from({ zipTree(journeyMapJar.singleFile) }) {
+        include 'META-INF/jars/journeymap-api-fabric-*.jar'
+        eachFile { path = 'journeymap-api.jar' }
+    }
+    includeEmptyDirs = false
+    into layout.buildDirectory.dir('journeymap-api')
+}
+
+// The same for Xaero's Lib, inside Xaero's Minimap.
+def xaeroMinimapJar = configurations.detachedConfiguration(dependencies.create("maven.modrinth:xaeros-minimap:${xaero_minimap_version}") { transitive = false })
+def extractXaeroLib = tasks.register('extractXaeroLib', Sync) {
+    from({ zipTree(xaeroMinimapJar.singleFile) }) {
+        include 'META-INF/jars/xaerolib-*.jar'
+        eachFile { path = 'xaerolib.jar' }
+    }
+    includeEmptyDirs = false
+    into layout.buildDirectory.dir('xaerolib')
+}
+
+dependencies {
+    minecraft("com.mojang:minecraft:${minecraft_version}")
+    implementation("net.fabricmc:fabric-loader:${fabric_loader_version}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${fabric_version}")
+    implementation("dev.isxander:yet-another-config-lib:${yacl_version}-fabric")
+
+    // Required: the seed of the world the client is in. Nested in the jar (so the mods that nest this one bring it
+    // along), and on the dev runtime for runClient.
+    compileOnly("io.github.livingdeaddolls:seedengine-fabric:${seedengine_version}") { transitive = false }
+    localRuntime("io.github.livingdeaddolls:seedengine-fabric:${seedengine_version}") { transitive = false }
+    include("io.github.livingdeaddolls:seedengine-fabric:${seedengine_version}") { transitive = false }
+
+    // Optional: config button in Mod Menu. Also on the dev runtime so runClient shows it.
+    compileOnly("com.terraformersmc:modmenu:${modmenu_version}") { transitive = false }
+    localRuntime("com.terraformersmc:modmenu:${modmenu_version}")
+
+    // Optional map mods, to compile against.
+    compileOnly("maven.modrinth:journeymap:${journeymap_version}") { transitive = false }
+    compileOnly(files(layout.buildDirectory.file('journeymap-api/journeymap-api.jar')).builtBy(extractJourneyMapApi))
+    compileOnly("maven.modrinth:xaeros-minimap:${xaero_minimap_version}") { transitive = false }
+    compileOnly(files(layout.buildDirectory.file('xaerolib/xaerolib.jar')).builtBy(extractXaeroLib))
+    compileOnly("maven.modrinth:voxelmap-updated:${voxelmap_version}") { transitive = false }
+}
+
+// ./gradlew publishToMavenLocal puts the mod jar into the local Maven repository
+// (io.github.livingdeaddolls:waypointsapi-fabric:<version>+<minecraft_version>), with its sources, for the mods that
+// register kinds to build against and to nest in their own jar (Loom's include). Only the jars and a POM without
+// dependencies: the mods using it have Minecraft and Fabric already, and Seed Engine API is nested in the jar. No Gradle
+// module metadata either: it names this build's loader variant, which a common project depending on the jar would not match.
+java {
+    withSourcesJar()
+}
+tasks.named('sourcesJar', Jar) {
+    // The common code is compiled into this jar, so its sources go into the sources jar too.
+    dependsOn(configurations.commonJava)
+    from(configurations.commonJava)
+}
+tasks.withType(GenerateModuleMetadata).configureEach {
+    enabled = false
+}
+publishing {
+    publications {
+        create('mod', MavenPublication) {
+            artifactId = "${mod_id}-fabric"
+            version = "${project.version}+${minecraft_version}"
+            artifact(tasks.named('jar'))
+            artifact(tasks.named('sourcesJar'))
+        }
+    }
+}
+
+loom {
+    def aw = project(':common').file("src/main/resources/${mod_id}.accesswidener")
+    if (aw.exists()) {
+        accessWidenerPath.set(aw)
+    }
+    runs {
+        client {
+            client()
+            setConfigName('Fabric Client')
+            ideConfigGenerated(true)
+            runDir('runs/client')
+        }
+    }
+}
+
+// Implement mcgradleconventions loader attribute
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'includeInternal', 'modCompileClasspath'].each { variant ->
+    configurations.named(variant) {
+        attributes {
+            attribute(loaderAttribute, 'fabric')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName].each { variant->
+        configurations.named(variant) {
+            attributes {
+                attribute(loaderAttribute, 'fabric')
+            }
+        }
+    }
+}

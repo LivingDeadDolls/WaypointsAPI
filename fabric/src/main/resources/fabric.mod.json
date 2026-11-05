@@ -1,0 +1,46 @@
+{
+    "schemaVersion": 1,
+    "id": "${mod_id}",
+    "version": "${version}+${minecraft_version}",
+    "name": "${mod_name}",
+    "description": "${description}",
+    "authors": [
+        "${mod_author}"
+    ],
+    "contact": {
+        "sources": "https://github.com/LivingDeadDolls/WaypointsAPI",
+        "issues": "https://github.com/LivingDeadDolls/WaypointsAPI/issues"
+    },
+    "license": "${license}",
+    "icon": "assets/${mod_id}/icon.png",
+    "environment": "client",
+    "entrypoints": {
+        "client": [
+            "waypointsapi.WaypointsApiFabricClient"
+        ],
+        "modmenu": [
+            "waypointsapi.ModMenuIntegration"
+        ],
+        "journeymap": [
+            "waypointsapi.journeymap.WaypointsApiJourneyMap"
+        ]
+    },
+    "mixins": [
+        "${mod_id}.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=${fabric_loader_version}",
+        "fabric-api": "*",
+        "yet_another_config_lib_v3": "*",
+        "seedengine": "*",
+        "minecraft": "${fabric_minecraft_dependency}",
+        "java": ">=${java_version}"
+    },
+    "suggests": {
+        "modmenu": "*",
+        "journeymap": "*",
+        "xaerominimap": "*",
+        "xaeroworldmap": "*",
+        "voxelmap": "*"
+    }
+}

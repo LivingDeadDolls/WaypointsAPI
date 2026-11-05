@@ -1,0 +1,35 @@
+name: build
+on: [pull_request, push]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+      - name: validate gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: make gradle wrapper executable
+        run: chmod +x ./gradlew
+      # Seed Engine API is built from its repository, the branch of the same Minecraft version, into the local Maven repository.
+      - name: checkout seed engine api
+        uses: actions/checkout@v6
+        with:
+          repository: LivingDeadDolls/SeedEngineAPI
+          ref: ${{ github.base_ref || github.ref_name }}
+          path: seedengine
+      - name: publish seed engine api locally
+        run: cd seedengine && chmod +x ./gradlew && ./gradlew publishToMavenLocal
+      - name: build
+        run: ./gradlew build
+      - name: capture build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: Artifacts
+          path: |
+            fabric/build/libs/waypointsapi-*.jar
